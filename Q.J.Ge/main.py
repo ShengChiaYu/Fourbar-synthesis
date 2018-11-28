@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 from cmath import sqrt
 from math import cos, sin, atan, acos, pi, degrees
 
@@ -19,14 +20,14 @@ def path_gen_open(L, th1, phi_0, r, alpha, n, x0, y0):
         th2_max = acos((L[0]**2 + L[1]**2 - (L[2] + L[3])**2) / (2*L[0]*L[1]))
         th2 = np.linspace(-th2_max, th2_max, n)
         plt.title("Upper limit exists.")
-        plt.xlabel("Theta min = {:.3f}, Theta max = {:.3f}".format(degrees(-th2_max.real), degrees(th2_max.real)))
+        plt.xlabel("Th_2 min = {:.3f}, Th_2 max = {:.3f}".format(degrees(-th2_max.real), degrees(th2_max.real)))
         print("Upper limit exists.")
     # Lower limit exists
     elif condition_1 <= 0 and condition_2 < 0:
         th2_min = acos((L[0]**2 + L[1]**2 - (L[2] - L[3])**2) / (2*L[0]*L[1]))
         th2 = np.linspace(th2_min, 2*pi - th2_min, n)
         plt.title("Lower limit exists.")
-        plt.xlabel("Theta min = {:.3f}, Theta max = {:.3f}".format(degrees(th2_min.real), degrees(2*pi-th2_min.real)))
+        plt.xlabel("Th_2 min = {:.3f}, Th_2 max = {:.3f}".format(degrees(th2_min.real), degrees(2*pi-th2_min.real)))
         print("Lower limit exists.")
     # Both limit exist
     elif condition_1 > 0 and condition_2 < 0:
@@ -35,13 +36,13 @@ def path_gen_open(L, th1, phi_0, r, alpha, n, x0, y0):
         th2 = np.linspace(th2_min, th2_max, n)
         #th2 = np.linspace(-th2_max, -th2_min, n)
         plt.title("Both limit exist.")
-        plt.xlabel("Theta min = {:.3f}, Theta max = {:.3f}".format(degrees(th2_min.real), degrees(th2_max.real)))
+        plt.xlabel("Th_2 min = {:.3f}, Th_2 max = {:.3f}".format(degrees(th2_min.real), degrees(th2_max.real)))
         print("Both limit exist.")
     # No limit exists
     elif condition_1 <= 0 and condition_2 >= 0:
         th2 = np.linspace(0, 2*pi, n)
         plt.title("No limit exists.")
-        plt.xlabel("Theta min = 0, Theta max = 360")
+        plt.xlabel("Th_2 min = 0, Th_2 max = 360")
         print("No limit exists.")
 
     # Calculate the positions of coupler curve by different input angles
@@ -55,8 +56,8 @@ def path_gen_open(L, th1, phi_0, r, alpha, n, x0, y0):
         b = -2 * k3
         c = k1 -k2
 
-        x_1 = (-b + sqrt(b**2 - 4*a*c)) / (2 * a) # x_1 and x_2 = tan((1/2)*th3)
-        x_2 = (-b - sqrt(b**2 - 4*a*c)) / (2 * a)
+        x_1 = (-b + sqrt(b**2 - 4*a*c).real) / (2 * a) # x_1 and x_2 = tan((1/2)*th3)
+        x_2 = (-b - sqrt(b**2 - 4*a*c).real) / (2 * a)
 
         th3_1 = 2*atan(x_1)
         th3_2 = 2*atan(x_2)
@@ -100,7 +101,7 @@ if __name__ == "__main__":
     #L = np.array([20, 40, 30, 40]) # No limit exists.    c1<=0 c2>=0
     th1 = 0
     phi_0 = pi/2
-    r = L[2]/2*sqrt(2) # 50 % of coupler length
+    r = L[2]/2*math.sqrt(2) # 50 % of coupler length
     alpha = pi/4       # midpoint of coupler link
     n = 360
     x0 = 0
