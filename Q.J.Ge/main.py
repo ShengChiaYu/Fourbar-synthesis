@@ -4,7 +4,7 @@ import math
 from cmath import sqrt
 from math import cos, sin, atan, acos, pi, degrees
 
-def path_gen_open(L, th1, phi_0, r, alpha, n, x0, y0):
+def path_gen_open(L, th1, r, alpha, n, x0, y0):
 
     # Validity: Check if the linkages can be assembled and move.
     if max(L) >= (sum(L) - max(L)):
@@ -100,7 +100,6 @@ if __name__ == "__main__":
     #L = np.array([31, 40, 20, 40]) # Both limit exist.   c1>0  c2<0
     #L = np.array([20, 40, 30, 40]) # No limit exists.    c1<=0 c2>=0
     th1 = 0
-    phi_0 = pi/2
     r = L[2]/2*math.sqrt(2) # 50 % of coupler length
     alpha = pi/4       # midpoint of coupler link
     n = 360
@@ -108,4 +107,4 @@ if __name__ == "__main__":
     y0 = 0
     #=======================================================
     # Path generation
-    p1, p2 = path_gen_open(L, th1, phi_0, r, alpha, n, x0, y0)
+    p1, p2 = path_gen_open(L, th1, r, alpha, n, x0, y0)
