@@ -70,14 +70,14 @@ def path_gen_open(L, th1, r, alpha, n, x0, y0):
         p2y = L[1]*sin(th2[i]) + r*sin(alpha+th3_2) + y0
         p2.append([p2x, p2y])
 
-        plt.plot(L[1]*cos(th2[i]), L[1]*sin(th2[i]), 'go', markersize=1)
+        plt.plot(L[1]*cos(th2[i]) + x0, L[1]*sin(th2[i]) + y0, 'go', markersize=1)
 
     p1 = np.array(p1)
     p2 = np.array(p2)
 
     plt.plot(p1[:,0],p1[:,1],'ro', markersize=1)
     plt.plot(p2[:,0],p2[:,1],'bo', markersize=1)
-    plt.plot(0,0,'k+')
+    plt.plot(x0,y0,'k+')
     plt.axis('equal')
     plt.show()
 
@@ -94,17 +94,37 @@ def loop_equation(L, th1, phi_0, r, alpha, n, x0, y0):
     pass
 
 if __name__ == "__main__":
+    """
     # Testing data
-    L = np.array([30, 40, 31, 38]) # Upper limit exists. c1>0  c2>=0
+    #L = np.array([30, 40, 31, 38]) # Upper limit exists. c1>0  c2>=0
     #L = np.array([20, 29, 30, 40]) # Lower limit exists. c1<=0 c2<0
     #L = np.array([31, 40, 20, 40]) # Both limit exist.   c1>0  c2<0
-    #L = np.array([20, 40, 30, 40]) # No limit exists.    c1<=0 c2>=0
+    L = np.array([20, 40, 30, 40]) # No limit exists.    c1<=0 c2>=0
     th1 = 0
     r = L[2]/2*math.sqrt(2) # 50 % of coupler length
     alpha = pi/4       # midpoint of coupler link
     n = 360
     x0 = 0
     y0 = 0
+    """
+    """
+    # Q.J.Ge Closed path parameters
+    L = np.array([11, 6, 8, 10])
+    th1 = 0.1745
+    r = 7
+    alpha = 0.6981
+    n = 360
+    x0 = 10
+    y0 = 14
+    """
+    # Q.J.Ge open path parameters
+    L = np.array([3, 1, 2, 1.6])
+    th1 = 0.2
+    r = 0.5
+    alpha = 0.3
+    n = 360
+    x0 = -2
+    y0 = -3
     #=======================================================
     # Path generation
     p1, p2 = path_gen_open(L, th1, r, alpha, n, x0, y0)
