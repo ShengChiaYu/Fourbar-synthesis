@@ -94,7 +94,7 @@ def loop_equation(L, th1, phi_0, r, alpha, n, x0, y0):
     pass
 
 if __name__ == "__main__":
-    """
+
     # Testing data
     #L = np.array([30, 40, 31, 38]) # Upper limit exists. c1>0  c2>=0
     #L = np.array([20, 29, 30, 40]) # Lower limit exists. c1<=0 c2<0
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     n = 360
     x0 = 0
     y0 = 0
-    """
+
     """
     # Q.J.Ge Closed path parameters
     L = np.array([11, 6, 8, 10])
@@ -117,6 +117,7 @@ if __name__ == "__main__":
     x0 = 10
     y0 = 14
     """
+    """
     # Q.J.Ge open path parameters
     L = np.array([3, 1, 2, 1.6])
     th1 = 0.2
@@ -125,6 +126,8 @@ if __name__ == "__main__":
     n = 360
     x0 = -2
     y0 = -3
+    """
     #=======================================================
     # Path generation
     p1, p2 = path_gen_open(L, th1, r, alpha, n, x0, y0)
+    print(p1)
