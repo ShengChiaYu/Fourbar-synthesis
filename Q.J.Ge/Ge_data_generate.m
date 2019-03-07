@@ -61,7 +61,7 @@
 
 %% Generate numerous sets of data points and Fourier descriptors--------------
 % Generate random parameters according to ANN and FD paper.
-n = 500; % Number of data sets.
+n = 1000; % Number of data sets.
 r = zeros(n,4);
 r(:,2) = 1;                                                                 % r2 is the shortest link and set as unit.
 r(:,1) = 1 + (5-1)*rand(n,1);                                               % r1 is p-link and chosen 1 <= p <= 5 at random.
@@ -73,9 +73,9 @@ N = 360;
 x = 0;
 y = 0;
 theta1 = 0;
-pp = 2;
+pp = 5;
 
-% Generate task curve Fourier descriptors.
+% Generate Fourier descriptors of task curve.
 Tk = zeros(n,pp*2+1);
 data_v2 = zeros(n,N);
 z = zeros(n,N);
@@ -83,7 +83,8 @@ for i = 1:1:n
 [data_v2(i,:), theta2] = path_gen_open_v2(r(i,:), r6(i,:), theta6(i,:), N, x, y, theta1,1);
 data = data_v2(i,:);
 Tk(i,:) = Fourier_descriptors(pp, theta2, data);
-                                               % Calculate the complex z(i) by FD.                       
+
+% Calculate the complex z(i) by FD.                       
 for j = 1:1:N
     for k = -pp:1:pp
         z(i,j) = z(i,j) + Tk(i,k+pp+1)*exp(1i*k*theta2(j));
@@ -93,11 +94,11 @@ end
 end
 
 %% Plot the data sets
-fig = 1 + 9 * 5;            % Index of first figure.
-si = 1;                     % Index of subplot.
+fig = 1 + 9 * 3;                % Index of first figure.
+i_splt = 1;                     % Index of subplot.
 for i = fig:1:fig+8
-    subplot(3,3,si)
+    subplot(3,3,i_splt)
     plot(real(data_v2(i,:)), imag(data_v2(i,:)), 'bo', real(z(i,:)), imag(z(i,:)), 'r*')
     axis equal
-    si = si + 1;
+    i_splt = i_splt + 1;
 end

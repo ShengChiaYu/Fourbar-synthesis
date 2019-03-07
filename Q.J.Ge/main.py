@@ -83,16 +83,6 @@ def path_gen_open(L, th1, r, alpha, n, x0, y0):
 
     return p1, p2
 
-def loop_equation(L, th1, phi_0, r, alpha, n, x0, y0):
-    A = L[2]*(cmath.rect(L[1],-phi_0) - L[0])
-    B = sum(L*L) - 2*L[0]*L[1]*cos(phi_0)
-    C = L[2]*(cmath.rect(L[1],phi_0) - L[0])
-
-    delta_1 = L[0]**2 + L[1]**2 - (L[2] + L[3])**2 - 2*L[0]*L[1]*cos(phi_0)
-    delta_2 = L[0]**2 + L[1]**2 - (L[2] - L[3])**2 - 2*L[0]*L[1]*cos(phi_0)
-
-    pass
-
 if __name__ == "__main__":
 
     # Testing data
@@ -127,7 +117,9 @@ if __name__ == "__main__":
     x0 = -2
     y0 = -3
     """
-    #=======================================================
+    # =======================================================
     # Path generation
-    p1, p2 = path_gen_open(L, th1, r, alpha, n, x0, y0)
-    print(p1)
+    #p1, p2 = path_gen_open(L, th1, r, alpha, n, x0, y0)
+
+    # =======================================================
+    # Training
