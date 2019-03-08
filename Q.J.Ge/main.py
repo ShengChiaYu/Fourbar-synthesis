@@ -1,8 +1,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 import math
+import csv
 from cmath import sqrt
 from math import cos, sin, atan, acos, pi, degrees
+from keras.models import Sequential, load_model
+from keras.layers.core import Dense, Dropout, Activation
+from keras.layers import Conv2D, MaxPooling2D, Flatten
+from keras.optimizers import SGD, Adam
+from keras.utils import np_utils
+from keras.datasets import mnist
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 
 def path_gen_open(L, th1, r, alpha, n, x0, y0):
 
@@ -83,6 +92,55 @@ def path_gen_open(L, th1, r, alpha, n, x0, y0):
 
     return p1, p2
 
+
+def read_data(file):
+    raw_data = np.genfromtxt(file, delimiter=',')
+    return raw_data
+
+
+def train(train_x, train_y, batch, epochs, dpr, patience):
+    model = Sequential()
+    model.add(Dense(input_dim=22,units=22,activation='linear'))
+    # model.add(Dropout(dpr))
+    model.add(Dense(units=5,activation='linear'))
+    # model.add(Dropout(dpr))
+    model.add(Dense(units=5,activation='linear'))
+    # model.add(Dropout(dpr))
+    # for i in range(10):
+    #     model.add(Dense(units=689,activation='linear'))
+    model.add(Dense(units=5,activation='linear'))
+
+    model.compile(loss='mse',optimizer='adam',metrics=['mse'])
+    callbacks = [EarlyStopping(monitor='val_loss', patience=patience),
+                 ModelCheckpoint(filepath='best_model.h5', monitor='val_loss', save_best_only=True)]
+    history = model.fit(train_x, train_y, batch_size=batch, epochs=epochs, callbacks=callbacks,
+                        validation_split=0.2)
+
+    score = model.evaluate(train_x, train_y)
+    print("\nTrain loss:", score[0])
+
+    # plot training history
+    plt.plot(history.history['loss'], label='train')
+    plt.plot(history.history['val_loss'], label='valid')
+    plt.title('batch: {}, dpr: {}'.format(batch, dpr) )
+    plt.legend()
+    # pyplot.show()
+    plt.savefig('{}_{}.png'.format(batch, dpr), bbox_inches='tight')
+
+    return model
+
+def predict(model, test_x, test_y):
+    answer = model.predict(test_x)
+    # Write file
+    f = open(test_y,"w")
+    w = csv.writer(f)
+    # title = ['r1','r3','r4','r6','theta6']
+    # w.writerow(title)
+    for i in range(test_x.shape[0]):
+        content = answer[i,:]
+        w.writerow(content)
+
+
 if __name__ == "__main__":
 
     # Testing data
@@ -123,3 +181,11 @@ if __name__ == "__main__":
 
     # =======================================================
     # Training
+    train_x = read_data(sys.argv[1])
+    train_y = read_data(sys.argv[2])
+    test_x = read_data(sys.argv[3])
+    test_y = sys.argv[4]
+
+    model = train(train_x, train_y, batch=64, epochs=100, dpr=0.0, patience=5)
+    # model = load_model('best_model.h5')
+    predict(model, test_x, test_y)

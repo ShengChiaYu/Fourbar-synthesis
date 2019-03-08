@@ -61,7 +61,7 @@
 
 %% Generate numerous sets of data points and Fourier descriptors--------------
 % Generate random parameters according to ANN and FD paper.
-n = 1000; % Number of data sets.
+n = 100; % Number of data sets.
 r = zeros(n,4);
 r(:,2) = 1;                                                                 % r2 is the shortest link and set as unit.
 r(:,1) = 1 + (5-1)*rand(n,1);                                               % r1 is p-link and chosen 1 <= p <= 5 at random.
@@ -69,7 +69,7 @@ r(:,4) = r(:,1) + (5-r(:,1)).*rand(n,1);                                    % r4
 r(:,3) = r(:,2)+r(:,4)-r(:,1) + (r(:,4)-(r(:,2)+r(:,4)-r(:,1))).*rand(n,1); % r3 is q-link and chosen s+l-p <= q <= l at random.
 r6 = 1 + (5-1)*rand(n,1);                                                   % r6 is chosen 1 <= r6 <= 5 at random.
 theta6 = 2*pi*rand(n,1);                                                    % theta6 is chosen 0 <= theta6 <= 2*pi at random.
-N = 360;
+N = 10;
 x = 0;
 y = 0;
 theta1 = 0;
@@ -93,8 +93,19 @@ end
 
 end
 
+% Process Tk and linkage dimensions to data_x[abs angle...] and data_y[r1 r3 r4 r6 theta6].
+data_x(:,1:2:(2*pp+1)*2-1) = abs(Tk);
+data_x(:,2:2:(2*pp+1)*2) = angle(Tk);
+
+data_y(:,1) = r(:,1);
+data_y(:,2:3) = r(:,3:4);
+data_y(:,4) = r6;
+data_y(:,5) = theta6;
+
+feature_scaling_std(data_x);
+
 %% Plot the data sets
-fig = 1 + 9 * 3;                % Index of first figure.
+fig = 1 + 9 * 1;                % Index of first figure.
 i_splt = 1;                     % Index of subplot.
 for i = fig:1:fig+8
     subplot(3,3,i_splt)
@@ -102,3 +113,11 @@ for i = fig:1:fig+8
     axis equal
     i_splt = i_splt + 1;
 end
+
+%% Functions
+function data_x = feature_scaling_std(data_x)
+mean_x = mean(data_x,1);
+std_x = std(data_x,1);
+data_x = (data_x-mean_x)./std_x;
+end
+
