@@ -61,7 +61,7 @@
 
 %% Generate numerous sets of data points and Fourier descriptors--------------
 % Generate random parameters according to ANN and FD paper.
-n = 100; % Number of data sets.
+n = 1000; % Number of data sets.
 r = zeros(n,4);
 r(:,2) = 1;                                                                 % r2 is the shortest link and set as unit.
 r(:,1) = 1 + (5-1)*rand(n,1);                                               % r1 is p-link and chosen 1 <= p <= 5 at random.
@@ -69,7 +69,7 @@ r(:,4) = r(:,1) + (5-r(:,1)).*rand(n,1);                                    % r4
 r(:,3) = r(:,2)+r(:,4)-r(:,1) + (r(:,4)-(r(:,2)+r(:,4)-r(:,1))).*rand(n,1); % r3 is q-link and chosen s+l-p <= q <= l at random.
 r6 = 1 + (5-1)*rand(n,1);                                                   % r6 is chosen 1 <= r6 <= 5 at random.
 theta6 = 2*pi*rand(n,1);                                                    % theta6 is chosen 0 <= theta6 <= 2*pi at random.
-N = 10;
+N = 100;   % Number of points
 x = 0;
 y = 0;
 theta1 = 0;
@@ -102,7 +102,7 @@ data_y(:,2:3) = r(:,3:4);
 data_y(:,4) = r6;
 data_y(:,5) = theta6;
 
-feature_scaling_std(data_x);
+% feature_scaling_std(data_x);
 
 %% Plot the data sets
 fig = 1 + 9 * 1;                % Index of first figure.

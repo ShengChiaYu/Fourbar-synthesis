@@ -1,10 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import sys
+import sys, os
 import math
 import csv
 from cmath import sqrt
 from math import cos, sin, atan, acos, pi, degrees
+from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential, load_model
 from keras.layers.core import Dense, Dropout, Activation
 from keras.layers import Conv2D, MaxPooling2D, Flatten
@@ -13,6 +14,7 @@ from keras.utils import np_utils
 from keras.datasets import mnist
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 
+# Generate path by parameters of fourbar linkages
 def path_gen_open(L, th1, r, alpha, n, x0, y0):
 
     # Validity: Check if the linkages can be assembled and move.
@@ -92,100 +94,114 @@ def path_gen_open(L, th1, r, alpha, n, x0, y0):
 
     return p1, p2
 
-
-def read_data(file):
+# Read datasets
+def load_data(file):
     raw_data = np.genfromtxt(file, delimiter=',')
-    return raw_data
+    scaler = MinMaxScaler(copy=True, feature_range=(-1, 1))
+    data = scaler.fit_transform(raw_data)
+    return data, scaler
 
-
-def train(train_x, train_y, batch, epochs, dpr, patience):
+# Dnn trianing model
+def train(x_train, y_train, x_test, y_test, batch, epochs, dpr, patience):
     model = Sequential()
-    model.add(Dense(input_dim=22,units=22,activation='linear'))
-    # model.add(Dropout(dpr))
-    model.add(Dense(units=5,activation='linear'))
-    # model.add(Dropout(dpr))
-    model.add(Dense(units=5,activation='linear'))
-    # model.add(Dropout(dpr))
-    # for i in range(10):
-    #     model.add(Dense(units=689,activation='linear'))
+    model.add(Dense(input_dim=22,units=22,activation='tanh'))
+    model.add(Dropout(dpr))
+    model.add(Dense(units=5,activation='tanh'))
+    model.add(Dropout(dpr))
+    model.add(Dense(units=5,activation='tanh'))
+    model.add(Dropout(dpr))
     model.add(Dense(units=5,activation='linear'))
 
     model.compile(loss='mse',optimizer='adam',metrics=['mse'])
+
+    save_path = os.path.join(os.getcwd(), 'models', 'batch{}_dpr{}.h5'.format(batch, dpr))
     callbacks = [EarlyStopping(monitor='val_loss', patience=patience),
-                 ModelCheckpoint(filepath='best_model.h5', monitor='val_loss', save_best_only=True)]
-    history = model.fit(train_x, train_y, batch_size=batch, epochs=epochs, callbacks=callbacks,
+                 ModelCheckpoint(filepath=save_path, monitor='val_loss', save_best_only=True)]
+
+    history = model.fit(x_train, y_train, batch_size=batch, epochs=epochs, callbacks=callbacks,
                         validation_split=0.2)
 
-    score = model.evaluate(train_x, train_y)
+    # Print evaluation.
+    score = model.evaluate(x_train, y_train)
     print("\nTrain loss:", score[0])
+    result = model.evaluate(x_test, y_test)
+    print("\nTest loss:", result[0])
+
+    # Save evaluations to loss_history.
+    save_path = os.path.join(os.getcwd(), 'loss_history.csv')
+    f_loss = open(save_path, "a+")
+    f_loss.write('batch: {}, dpr: {}\n'.format(batch, dpr))
+    f_loss.write('Train loss: {}, Test loss: {}\n\n'.format(score[0], result[0]))
+    f_loss.close()
 
     # plot training history
     plt.plot(history.history['loss'], label='train')
     plt.plot(history.history['val_loss'], label='valid')
     plt.title('batch: {}, dpr: {}'.format(batch, dpr) )
     plt.legend()
-    # pyplot.show()
-    plt.savefig('{}_{}.png'.format(batch, dpr), bbox_inches='tight')
+    save_path = os.path.join(os.getcwd(), 'training_history', 'batch{}_dpr{}.png'.format(batch, dpr))
+    plt.savefig(save_path, bbox_inches='tight')
 
-    return model
+    return model, batch, dpr
 
-def predict(model, test_x, test_y):
-    answer = model.predict(test_x)
+# Predict test data by training model
+def predict(model, x_test, scaler):
+
+    answer = scaler.inverse_transform(model[0].predict(x_test))
+
     # Write file
-    f = open(test_y,"w")
-    w = csv.writer(f)
-    # title = ['r1','r3','r4','r6','theta6']
-    # w.writerow(title)
-    for i in range(test_x.shape[0]):
-        content = answer[i,:]
-        w.writerow(content)
+    save_path = os.path.join(os.getcwd(), 'results', 'batch{}_dpr{}.csv'.format(model[1], model[2]))
+    f_result = open(save_path, "w")
+    for i in range(x_test.shape[0]):
+        content = " ".join(str(x) for x in answer[i,:])
+        f_result.write(content)
+        f_result.write('\n')
+    f_result.close()
 
+    return answer
 
+# Main()
 if __name__ == "__main__":
 
     # Testing data
-    #L = np.array([30, 40, 31, 38]) # Upper limit exists. c1>0  c2>=0
-    #L = np.array([20, 29, 30, 40]) # Lower limit exists. c1<=0 c2<0
-    #L = np.array([31, 40, 20, 40]) # Both limit exist.   c1>0  c2<0
-    L = np.array([20, 40, 30, 40]) # No limit exists.    c1<=0 c2>=0
-    th1 = 0
-    r = L[2]/2*math.sqrt(2) # 50 % of coupler length
-    alpha = pi/4       # midpoint of coupler link
-    n = 360
-    x0 = 0
-    y0 = 0
+    # L = np.array([30, 40, 31, 38]) # Upper limit exists. c1>0  c2>=0
+    # L = np.array([20, 29, 30, 40]) # Lower limit exists. c1<=0 c2<0
+    # L = np.array([31, 40, 20, 40]) # Both limit exist.   c1>0  c2<0
+    # L = np.array([20, 40, 30, 40]) # No limit exists.    c1<=0 c2>=0
+    # th1 = 0
+    # r = L[2]/2*math.sqrt(2) # 50 % of coupler length
+    # alpha = pi/4       # midpoint of coupler link
+    # n = 360
+    # x0 = 0
+    # y0 = 0
 
-    """
     # Q.J.Ge Closed path parameters
-    L = np.array([11, 6, 8, 10])
-    th1 = 0.1745
-    r = 7
-    alpha = 0.6981
-    n = 360
-    x0 = 10
-    y0 = 14
-    """
-    """
+    # L = np.array([11, 6, 8, 10])
+    # th1 = 0.1745
+    # r = 7
+    # alpha = 0.6981
+    # n = 360
+    # x0 = 10
+    # y0 = 14
+
     # Q.J.Ge open path parameters
-    L = np.array([3, 1, 2, 1.6])
-    th1 = 0.2
-    r = 0.5
-    alpha = 0.3
-    n = 360
-    x0 = -2
-    y0 = -3
-    """
-    # =======================================================
-    # Path generation
+    # L = np.array([3, 1, 2, 1.6])
+    # th1 = 0.2
+    # r = 0.5
+    # alpha = 0.3
+    # n = 360
+    # x0 = -2
+    # y0 = -3
+
+    # =============== Path generation ===============
     #p1, p2 = path_gen_open(L, th1, r, alpha, n, x0, y0)
 
-    # =======================================================
-    # Training
-    train_x = read_data(sys.argv[1])
-    train_y = read_data(sys.argv[2])
-    test_x = read_data(sys.argv[3])
-    test_y = sys.argv[4]
+    # ================== Training ===================
+    x_train = load_data(os.path.join(os.getcwd(), 'data', 'x_train.csv')) # Return (data, scaler)
+    y_train = load_data(os.path.join(os.getcwd(), 'data','y_train.csv'))
+    x_test = load_data(os.path.join(os.getcwd(), 'data','x_test.csv'))
+    y_test = load_data(os.path.join(os.getcwd(), 'data','y_test.csv'))
 
-    model = train(train_x, train_y, batch=64, epochs=100, dpr=0.0, patience=5)
-    # model = load_model('best_model.h5')
-    predict(model, test_x, test_y)
+    model = train(x_train[0], y_train[0], x_test[0], y_test[0], batch=64, epochs=1000, dpr=0.2, patience=5) # Return (model, batch, dpr)
+    # model = load_model('batch32_dpr0.0.h5')
+    result = predict(model, x_test[0], y_train[1])
