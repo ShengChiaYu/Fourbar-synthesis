@@ -102,17 +102,8 @@ def load_data(file):
     return data, scaler
 
 # Dnn trianing model
-def train(x_train, y_train, x_test, y_test, batch, epochs, dpr, patience):
-    model = Sequential()
-    model.add(Dense(input_dim=22,units=22,activation='tanh'))
-    model.add(Dropout(dpr))
-    model.add(Dense(units=5,activation='tanh'))
-    model.add(Dropout(dpr))
-    model.add(Dense(units=5,activation='tanh'))
-    model.add(Dropout(dpr))
-    model.add(Dense(units=5,activation='linear'))
-
-    model.compile(loss='mse',optimizer='adam',metrics=['mse'])
+def train(x_train, y_train, x_test, y_test, batch, epochs, dpr, patience, model_num):
+    model = models(model_num, dpr)
 
     save_path = os.path.join(os.getcwd(), 'models', 'batch{}_dpr{}.h5'.format(batch, dpr))
     callbacks = [EarlyStopping(monitor='val_loss', patience=patience),
@@ -123,15 +114,13 @@ def train(x_train, y_train, x_test, y_test, batch, epochs, dpr, patience):
 
     # Print evaluation.
     score = model.evaluate(x_train, y_train)
-    print("\nTrain loss:", score[0])
     result = model.evaluate(x_test, y_test)
-    print("\nTest loss:", result[0])
 
     # Save evaluations to loss_history.
     save_path = os.path.join(os.getcwd(), 'loss_history.csv')
     f_loss = open(save_path, "a+")
     f_loss.write('batch: {}, dpr: {}\n'.format(batch, dpr))
-    f_loss.write('Train loss: {}, Test loss: {}\n\n'.format(score[0], result[0]))
+    f_loss.write('Train loss: {0:.8f}, Test loss: {1:.8f}\n\n'.format(score[0], result[0]))
     f_loss.close()
 
     # plot training history
@@ -145,12 +134,17 @@ def train(x_train, y_train, x_test, y_test, batch, epochs, dpr, patience):
     return model, batch, dpr
 
 # Predict test data by training model
-def predict(model, x_test, scaler):
+def predict(model, x_train, y_train, x_test, y_test, scaler):
 
-    answer = scaler.inverse_transform(model[0].predict(x_test))
+    # Print evaluation.
+    score = model[0].evaluate(x_train, y_train)
+    print("\nTrain loss:", score[0])
+    result = model[0].evaluate(x_test, y_test)
+    print("\nTest loss:", result[0])
 
     # Write file
-    save_path = os.path.join(os.getcwd(), 'results', 'batch{}_dpr{}.csv'.format(model[1], model[2]))
+    answer = scaler.inverse_transform(model[0].predict(x_test))
+    save_path = os.path.join(os.getcwd(), 'results', 'batch{}_dpr{}.csv'.format(model[1], 10*model[2]))
     f_result = open(save_path, "w")
     for i in range(x_test.shape[0]):
         content = " ".join(str(x) for x in answer[i,:])
@@ -159,6 +153,30 @@ def predict(model, x_test, scaler):
     f_result.close()
 
     return answer
+
+# Print evaluations
+def print_eval(model, x_train, y_train, x_test, y_test):
+    # Print evaluation.
+    score = model.evaluate(x_train, y_train)
+    print("\nTrain loss:", score[0])
+    result = model.evaluate(x_test, y_test)
+    print("\nTest loss:", result[0])
+
+# Models
+def models(n,dpr):
+    # Paper model
+    if n == 1:
+        model = Sequential()
+        model.add(Dense(input_dim=22,units=22,activation='tanh'))
+        model.add(Dropout(dpr))
+        model.add(Dense(units=5,activation='tanh'))
+        model.add(Dropout(dpr))
+        model.add(Dense(units=5,activation='tanh'))
+        model.add(Dropout(dpr))
+        model.add(Dense(units=5,activation='linear'))
+
+        model.compile(loss='mse',optimizer='adam',metrics=['mse'])
+    return model
 
 # Main()
 if __name__ == "__main__":
@@ -197,11 +215,15 @@ if __name__ == "__main__":
     #p1, p2 = path_gen_open(L, th1, r, alpha, n, x0, y0)
 
     # ================== Training ===================
-    x_train = load_data(os.path.join(os.getcwd(), 'data', 'x_train.csv')) # Return (data, scaler)
+    x_train = load_data(os.path.join(os.getcwd(), 'data', 'x_train.csv')) # load_data() return (data, scaler)
     y_train = load_data(os.path.join(os.getcwd(), 'data','y_train.csv'))
     x_test = load_data(os.path.join(os.getcwd(), 'data','x_test.csv'))
     y_test = load_data(os.path.join(os.getcwd(), 'data','y_test.csv'))
 
-    model = train(x_train[0], y_train[0], x_test[0], y_test[0], batch=64, epochs=1000, dpr=0.2, patience=5) # Return (model, batch, dpr)
-    # model = load_model('batch32_dpr0.0.h5')
-    result = predict(model, x_test[0], y_train[1])
+    model = train(x_train[0], y_train[0], x_test[0], y_test[0],
+                  batch=128, epochs=1000, dpr=0.3, patience=5, model_num=1) # train() return eturn (model, batch, dpr)
+    result = predict(model, x_train[0], y_train[0], x_test[0], y_test[0], y_train[1])
+
+    # ============ Load models and print evaluation =============
+    # model = load_model(os.path.join(os.getcwd(), 'models','batch32_dpr0.0.h5'))
+    # print_eval(model, x_train[0], y_train[0], x_test[0], y_test[0])

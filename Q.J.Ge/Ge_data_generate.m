@@ -120,4 +120,3 @@ mean_x = mean(data_x,1);
 std_x = std(data_x,1);
 data_x = (data_x-mean_x)./std_x;
 end
-
