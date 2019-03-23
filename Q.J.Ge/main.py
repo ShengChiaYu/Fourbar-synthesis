@@ -1,4 +1,5 @@
 import numpy as np
+np.random.seed(1124)
 import matplotlib.pyplot as plt
 import sys, os
 import math
@@ -13,7 +14,7 @@ from keras.optimizers import SGD, Adam
 from keras.utils import np_utils
 from keras.datasets import mnist
 from keras.callbacks import EarlyStopping, ModelCheckpoint
-
+data_folder = 'threshold1e-3'
 # Generate path by parameters of fourbar linkages
 def path_gen_open(L, th1, r, alpha, n, x0, y0):
 
@@ -105,18 +106,21 @@ def load_data(file):
 def train(x_train, y_train, x_test, y_test, batch, epochs, dpr, patience, model_num):
     model = models(model_num, dpr)
 
-    save_path = os.path.join(os.getcwd(), 'models', 'batch{}_dpr{}.h5'.format(batch, dpr))
+    save_path = os.path.join(os.getcwd(), 'models', data_folder, 'batch{}_dpr{}.h5'.format(batch, dpr))
     callbacks = [EarlyStopping(monitor='val_loss', patience=patience),
                  ModelCheckpoint(filepath=save_path, monitor='val_loss', save_best_only=True)]
+
+    indices = np.arange(len(x_train))
+    np.random.shuffle(indices)
+    x_train = x_train[indices]
+    y_train = y_train[indices]
 
     history = model.fit(x_train, y_train, batch_size=batch, epochs=epochs, callbacks=callbacks,
                         validation_split=0.2)
 
-    # Print evaluation.
+    # Save evaluations to loss_history.
     score = model.evaluate(x_train, y_train)
     result = model.evaluate(x_test, y_test)
-
-    # Save evaluations to loss_history.
     save_path = os.path.join(os.getcwd(), 'loss_history.csv')
     f_loss = open(save_path, "a+")
     f_loss.write('batch: {}, dpr: {}\n'.format(batch, dpr))
@@ -128,7 +132,7 @@ def train(x_train, y_train, x_test, y_test, batch, epochs, dpr, patience, model_
     plt.plot(history.history['val_loss'], label='valid')
     plt.title('batch: {}, dpr: {}'.format(batch, dpr) )
     plt.legend()
-    save_path = os.path.join(os.getcwd(), 'training_history', 'batch{}_dpr{}.png'.format(batch, dpr))
+    save_path = os.path.join(os.getcwd(), 'training_history', data_folder, 'batch{}_dpr{}.png'.format(batch, dpr))
     plt.savefig(save_path, bbox_inches='tight')
 
     return model, batch, dpr
@@ -144,7 +148,7 @@ def predict(model, x_train, y_train, x_test, y_test, scaler):
 
     # Write file
     answer = scaler.inverse_transform(model[0].predict(x_test))
-    save_path = os.path.join(os.getcwd(), 'results', 'batch{}_dpr{}.csv'.format(model[1], 10*model[2]))
+    save_path = os.path.join(os.getcwd(), 'results', data_folder, 'batch{}_dpr{}.csv'.format(model[1], int(10*model[2]) ) )
     f_result = open(save_path, "w")
     for i in range(x_test.shape[0]):
         content = " ".join(str(x) for x in answer[i,:])
@@ -176,6 +180,20 @@ def models(n,dpr):
         model.add(Dense(units=5,activation='linear'))
 
         model.compile(loss='mse',optimizer='adam',metrics=['mse'])
+
+    elif n == 2:
+        model = Sequential()
+        model.add(Dense(input_dim=22,units=22,activation='tanh'))
+        model.add(Dropout(dpr))
+        model.add(Dense(units=5,activation='tanh'))
+        model.add(Dropout(dpr))
+        model.add(Dense(units=5,activation='tanh'))
+        model.add(Dropout(dpr))
+        model.add(Dense(units=5,activation='linear'))
+
+        model.compile(loss='mse',optimizer='adam',metrics=['mse'])
+
+
     return model
 
 # Main()
@@ -215,13 +233,13 @@ if __name__ == "__main__":
     #p1, p2 = path_gen_open(L, th1, r, alpha, n, x0, y0)
 
     # ================== Training ===================
-    x_train = load_data(os.path.join(os.getcwd(), 'data', 'x_train.csv')) # load_data() return (data, scaler)
-    y_train = load_data(os.path.join(os.getcwd(), 'data','y_train.csv'))
-    x_test = load_data(os.path.join(os.getcwd(), 'data','x_test.csv'))
-    y_test = load_data(os.path.join(os.getcwd(), 'data','y_test.csv'))
+    x_train = load_data(os.path.join(os.getcwd(), 'data', data_folder, 'x_train.csv')) # load_data() return (data, scaler)
+    y_train = load_data(os.path.join(os.getcwd(), 'data', data_folder, 'y_train.csv'))
+    x_test = load_data(os.path.join(os.getcwd(), 'data', data_folder, 'x_test.csv'))
+    y_test = load_data(os.path.join(os.getcwd(), 'data', data_folder, 'y_test.csv'))
 
     model = train(x_train[0], y_train[0], x_test[0], y_test[0],
-                  batch=128, epochs=1000, dpr=0.3, patience=5, model_num=1) # train() return eturn (model, batch, dpr)
+                  batch=64, epochs=1000, dpr=0.2, patience=10, model_num=1) # train() return eturn (model, batch, dpr)
     result = predict(model, x_train[0], y_train[0], x_test[0], y_test[0], y_train[1])
 
     # ============ Load models and print evaluation =============

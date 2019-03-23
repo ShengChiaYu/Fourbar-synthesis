@@ -61,35 +61,60 @@
 
 %% Generate numerous sets of data points and Fourier descriptors--------------
 % Generate random parameters according to ANN and FD paper.
-n = 1000; % Number of data sets.
-r = zeros(n,4);
-r(:,2) = 1;                                                                 % r2 is the shortest link and set as unit.
-r(:,1) = 1 + (5-1)*rand(n,1);                                               % r1 is p-link and chosen 1 <= p <= 5 at random.
-r(:,4) = r(:,1) + (5-r(:,1)).*rand(n,1);                                    % r4 is the longest link and chosen p <= l <= 5 at random.
-r(:,3) = r(:,2)+r(:,4)-r(:,1) + (r(:,4)-(r(:,2)+r(:,4)-r(:,1))).*rand(n,1); % r3 is q-link and chosen s+l-p <= q <= l at random.
-r6 = 1 + (5-1)*rand(n,1);                                                   % r6 is chosen 1 <= r6 <= 5 at random.
-theta6 = 2*pi*rand(n,1);                                                    % theta6 is chosen 0 <= theta6 <= 2*pi at random.
-N = 100;   % Number of points
+n = 10000;  % Number of data sets.
+N = 360;   % Number of points
 x = 0;
 y = 0;
 theta1 = 0;
 pp = 5;
 
 % Generate Fourier descriptors of task curve.
+r = zeros(n,4);
+r(:,2) = 1;                                                                  % r2 is the shortest link and set as unit.
+r6 = zeros(n,1);
+theta6 = zeros(n,1);
+
 Tk = zeros(n,pp*2+1);
 data_v2 = zeros(n,N);
 z = zeros(n,N);
-for i = 1:1:n
-[data_v2(i,:), theta2] = path_gen_open_v2(r(i,:), r6(i,:), theta6(i,:), N, x, y, theta1,1);
-data = data_v2(i,:);
-Tk(i,:) = Fourier_descriptors(pp, theta2, data);
 
-% Calculate the complex z(i) by FD.                       
-for j = 1:1:N
-    for k = -pp:1:pp
-        z(i,j) = z(i,j) + Tk(i,k+pp+1)*exp(1i*k*theta2(j));
+mse = zeros(n,1);
+i = 1;
+threshold = 1e-3; %1.32e-1;
+while i <= n
+    % Generate random length of links.
+    r(i,1) = 1 + (5-1)*rand();                                               % r1 is p-link and chosen 1 <= p <= 5 at random.
+    r(i,4) = r(i,1) + (5-r(i,1)).*rand();                                    % r4 is the longest link and chosen p <= l <= 5 at random.
+    r(i,3) = r(i,2)+r(i,4)-r(i,1) + (r(i,4)-(r(i,2)+r(i,4)-r(i,1))).*rand(); % r3 is q-link and chosen s+l-p <= q <= l at random.
+    r6(i,1) = 1 + (5-1)*rand();                                              % r6 is chosen 1 <= r6 <= 5 at random.
+    theta6(i,1) = 2*pi*rand();                                               % theta6 is chosen 0 <= theta6 <= 2*pi at random.
+    
+    % Generate points and corresponding FD.
+    [data_v2(i,:), theta2] = path_gen_open_v2(r(i,:), r6(i,1), theta6(i,1), N, x, y, theta1,1);
+    Tk(i,:) = Fourier_descriptors(pp, theta2, data_v2(i,:));
+
+    % Calculate the complex z(i) by FD.                       
+    for j = 1:1:N
+        for k = -pp:1:pp
+            z(i,j) = z(i,j) + Tk(i,k+pp+1)*exp(1i*k*theta2(j));
+        end
     end
-end
+
+    % Calculate the mse of original data and complex z to delete the wild data.
+    err = (real(data_v2(i,:))- real(z(i,:))).^2 + (imag(data_v2(i,:))- imag(z(i,:))).^2;
+    mse(i,1) = sum(sqrt(err))/N;
+    
+    if mse(i,1) <= threshold
+        i = i + 1;
+    else
+        z(i,:) = 0;
+    end
+
+    % Print the process.
+    if rem(i,500) == 0
+        fprintf('i = %d\n', i);
+        fprintf('The mean-squared error is %0.4f\n', mean(mse(1:i,1)));
+    end
 
 end
 
@@ -101,8 +126,6 @@ data_y(:,1) = r(:,1);
 data_y(:,2:3) = r(:,3:4);
 data_y(:,4) = r6;
 data_y(:,5) = theta6;
-
-% feature_scaling_std(data_x);
 
 %% Plot the data sets
 fig = 1 + 9 * 1;                % Index of first figure.
