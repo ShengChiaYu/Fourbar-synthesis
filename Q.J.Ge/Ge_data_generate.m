@@ -62,7 +62,7 @@
 %% Generate numerous sets of data points and Fourier descriptors--------------
 % Generate random parameters according to ANN and FD paper.
 n = 10000;  % Number of data sets.
-N = 360;   % Number of points
+N = 60;   % Number of points
 x = 0;
 y = 0;
 theta1 = 0;
@@ -118,15 +118,17 @@ while i <= n
 
 end
 
-% Process Tk and linkage dimensions to data_x[abs angle...] and data_y[r1 r3 r4 r6 theta6].
+% Process Tk and linkage dimensions to data_x[abs angle...], data_param[r1 r3 r4 r6 theta6] and data_pos[x1 y1 x2 y2...].
 data_x(:,1:2:(2*pp+1)*2-1) = abs(Tk);
 data_x(:,2:2:(2*pp+1)*2) = angle(Tk);
 
-data_y(:,1) = r(:,1);
-data_y(:,2:3) = r(:,3:4);
-data_y(:,4) = r6;
-data_y(:,5) = theta6;
+data_param(:,1) = r(:,1);
+data_param(:,2:3) = r(:,3:4);
+data_param(:,4) = r6;
+data_param(:,5) = theta6;
 
+data_pos(:,1:2:size(data_v2,2)*2-1) = real(data_v2);
+data_pos(:,2:2:size(data_v2,2)*2) = imag(data_v2);
 %% Plot the data sets
 fig = 1 + 9 * 1;                % Index of first figure.
 i_splt = 1;                     % Index of subplot.
