@@ -14,7 +14,7 @@ from keras.optimizers import SGD, Adam
 from keras.utils import np_utils
 from keras.datasets import mnist
 from keras.callbacks import EarlyStopping, ModelCheckpoint
-data_folder = 'threshold1e-3'
+
 # Generate path by parameters of fourbar linkages
 def path_gen_open(L, th1, r, alpha, n, x0, y0):
 
@@ -106,7 +106,7 @@ def load_data(file):
 def train(x_train, y_train, x_test, y_test, batch, epochs, dpr, patience, model_num):
     model = models(model_num, dpr)
 
-    save_path = os.path.join(os.getcwd(), 'models', data_folder, 'batch{}_dpr{}.h5'.format(batch, dpr))
+    save_path = os.path.join(os.getcwd(), 'models', data_folder, '{}_batch{}_dpr{}.h5'.format(model_num, batch, dpr))
     callbacks = [EarlyStopping(monitor='val_loss', patience=patience),
                  ModelCheckpoint(filepath=save_path, monitor='val_loss', save_best_only=True)]
 
@@ -123,7 +123,7 @@ def train(x_train, y_train, x_test, y_test, batch, epochs, dpr, patience, model_
     result = model.evaluate(x_test, y_test)
     save_path = os.path.join(os.getcwd(), 'loss_history.csv')
     f_loss = open(save_path, "a+")
-    f_loss.write('batch: {}, dpr: {}\n'.format(batch, dpr))
+    f_loss.write('nodel: {}, batch: {}, dpr: {}\n'.format(model_num, batch, dpr))
     f_loss.write('Train loss: {0:.8f}, Test loss: {1:.8f}\n\n'.format(score[0], result[0]))
     f_loss.close()
 
@@ -132,13 +132,13 @@ def train(x_train, y_train, x_test, y_test, batch, epochs, dpr, patience, model_
     plt.plot(history.history['val_loss'], label='valid')
     plt.title('batch: {}, dpr: {}'.format(batch, dpr) )
     plt.legend()
-    save_path = os.path.join(os.getcwd(), 'training_history', data_folder, 'batch{}_dpr{}.png'.format(batch, dpr))
+    save_path = os.path.join(os.getcwd(), 'training_history', data_folder, '{}_batch{}_dpr{}.png'.format(model_num, batch, dpr))
     plt.savefig(save_path, bbox_inches='tight')
 
-    return model, batch, dpr
+    return [model, batch, dpr]
 
 # Predict test data by training model
-def predict(model, x_train, y_train, x_test, y_test, scaler):
+def predict(model, x_train, y_train, x_test, y_test, scaler, model_num):
 
     # Print evaluation.
     score = model[0].evaluate(x_train, y_train)
@@ -148,7 +148,7 @@ def predict(model, x_train, y_train, x_test, y_test, scaler):
 
     # Write file
     answer = scaler.inverse_transform(model[0].predict(x_test))
-    save_path = os.path.join(os.getcwd(), 'results', data_folder, 'batch{}_dpr{}.csv'.format(model[1], int(10*model[2]) ) )
+    save_path = os.path.join(os.getcwd(), 'results', data_folder, '{}_batch{}_dpr{}.csv'.format(model_num, model[1], int(10*model[2]) ) )
     f_result = open(save_path, "w")
     for i in range(x_test.shape[0]):
         content = " ".join(str(x) for x in answer[i,:])
@@ -159,11 +159,11 @@ def predict(model, x_train, y_train, x_test, y_test, scaler):
     return answer
 
 # Print evaluations
-def print_eval(model, x_train, y_train, x_test, y_test):
+def print_eval(model, x_train, y_train, x_test, y_test, scaler, model_num):
     # Print evaluation.
-    score = model.evaluate(x_train, y_train)
+    score = model[0].evaluate(x_train, y_train)
     print("\nTrain loss:", score[0])
-    result = model.evaluate(x_test, y_test)
+    result = model[0].evaluate(x_test, y_test)
     print("\nTest loss:", result[0])
 
 # Models
@@ -183,11 +183,11 @@ def models(n,dpr):
 
     elif n == 2:
         model = Sequential()
-        model.add(Dense(input_dim=22,units=22,activation='tanh'))
+        model.add(Dense(input_dim=22,units=32,activation='tanh'))
         model.add(Dropout(dpr))
-        model.add(Dense(units=5,activation='tanh'))
+        model.add(Dense(units=64,activation='tanh'))
         model.add(Dropout(dpr))
-        model.add(Dense(units=5,activation='tanh'))
+        model.add(Dense(units=32,activation='tanh'))
         model.add(Dropout(dpr))
         model.add(Dense(units=5,activation='linear'))
 
@@ -233,15 +233,18 @@ if __name__ == "__main__":
     #p1, p2 = path_gen_open(L, th1, r, alpha, n, x0, y0)
 
     # ================== Training ===================
+    data_folder = 'threshold1e-3'
     x_train = load_data(os.path.join(os.getcwd(), 'data', data_folder, 'x_train.csv')) # load_data() return (data, scaler)
     y_train = load_data(os.path.join(os.getcwd(), 'data', data_folder, 'y_train.csv'))
     x_test = load_data(os.path.join(os.getcwd(), 'data', data_folder, 'x_test.csv'))
     y_test = load_data(os.path.join(os.getcwd(), 'data', data_folder, 'y_test.csv'))
+    model_num = 2
 
-    model = train(x_train[0], y_train[0], x_test[0], y_test[0],
-                  batch=64, epochs=1000, dpr=0.2, patience=10, model_num=1) # train() return eturn (model, batch, dpr)
-    result = predict(model, x_train[0], y_train[0], x_test[0], y_test[0], y_train[1])
+    # model = train(x_train[0], y_train[0], x_test[0], y_test[0],
+    #               batch=64, epochs=1000, dpr=0.2, patience=10, model_num=model_num) # train() return eturn (model, batch, dpr)
+    # result = predict(model, x_train[0], y_train[0], x_test[0], y_test[0], y_train[1], model_num=model_num)
 
     # ============ Load models and print evaluation =============
-    # model = load_model(os.path.join(os.getcwd(), 'models','batch32_dpr0.0.h5'))
-    # print_eval(model, x_train[0], y_train[0], x_test[0], y_test[0])
+    model = load_model(os.path.join(os.getcwd(), 'models', data_folder, '2_batch64_dpr0.2.h5'))
+    model = [model, 64, 0.2]
+    print_eval(model, x_train[0], y_train[0], x_test[0], y_test[0], y_train[1], model_num)

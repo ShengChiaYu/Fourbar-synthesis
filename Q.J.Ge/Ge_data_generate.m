@@ -61,7 +61,7 @@
 
 %% Generate numerous sets of data points and Fourier descriptors--------------
 % Generate random parameters according to ANN and FD paper.
-n = 10000;  % Number of data sets.
+n = 100;  % Number of data sets.
 N = 60;   % Number of points
 x = 0;
 y = 0;
@@ -78,7 +78,7 @@ Tk = zeros(n,pp*2+1);
 data_v2 = zeros(n,N);
 z = zeros(n,N);
 
-mse = zeros(n,1);
+mean_err = zeros(n,1);
 i = 1;
 threshold = 1e-3; %1.32e-1;
 while i <= n
@@ -102,9 +102,9 @@ while i <= n
 
     % Calculate the mse of original data and complex z to delete the wild data.
     err = (real(data_v2(i,:))- real(z(i,:))).^2 + (imag(data_v2(i,:))- imag(z(i,:))).^2;
-    mse(i,1) = sum(sqrt(err))/N;
+    mean_err(i,1) = sum(sqrt(err))/N;
     
-    if mse(i,1) <= threshold
+    if mean_err(i,1) <= threshold
         i = i + 1;
     else
         z(i,:) = 0;
@@ -113,7 +113,7 @@ while i <= n
     % Print the process.
     if rem(i,500) == 0
         fprintf('i = %d\n', i);
-        fprintf('The mean-squared error is %0.4f\n', mean(mse(1:i,1)));
+        fprintf('The mean-squared error is %0.4f\n', mean(mean_err(1:i,1)));
     end
 
 end
@@ -136,6 +136,7 @@ for i = fig:1:fig+8
     subplot(3,3,i_splt)
     plot(real(data_v2(i,:)), imag(data_v2(i,:)), 'bo', real(z(i,:)), imag(z(i,:)), 'r*')
     axis equal
+    legend('data','FD')
     i_splt = i_splt + 1;
 end
 
