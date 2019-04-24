@@ -2,178 +2,162 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-import torchvision
-import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
-from sklearn.preprocessing import MinMaxScaler
+
 import glob
 import os
+import sys
+import argparse
+from os.path import join
+
 import numpy as np
+import matplotlib.pyplot as plt
+from tqdm import tqdm
 
-# Creating a custom dataset
-class Fourbar(Dataset):
-    def __init__(self, root, x_file, y_file, transform=None):
-        """ Intialize the Fourbar dataset """
-        self.root = root
-        self.x_file = x_file
-        self.y_file = y_file
-        self.transform = transform
-        self.x_scaler = None
-        self.y_scaler = None
+from dataset import FDs
+from models import Net_1
+from utils import AverageMeter
 
-        # read files to get scalers
-        x_data = np.genfromtxt(os.path.join(self.root, self.x_file), delimiter=',')
-        y_data = np.genfromtxt(os.path.join(self.root, self.y_file), delimiter=',')
+def parse_args():
+    parser = argparse.ArgumentParser(description='Train a Fourbar network')
+    # Load data
+    parser.add_argument('--data_dir', dest='data_dir',
+                      help='directory to dataset', default="data",
+                      type=str)
+    parser.add_argument('--pos_num', dest='pos_num',
+                        help='60, 360',
+                        default='60positions', type=str)
+    parser.add_argument('--target', dest='tar',
+                        help='param, pos',
+                        default='_param.csv', type=str)
+    # Training setup
+    parser.add_argument('--net', dest='net',
+                        help='Net_1',
+                        default='Net_1', type=str)
+    parser.add_argument('--start_epoch', dest='start_epoch',
+                        help='starting epoch',
+                        default=1, type=int)
+    parser.add_argument('--epochs', dest='max_epochs',
+                        help='number of epochs to train',
+                        default=100, type=int)
+    parser.add_argument('--loss', dest='loss',
+                        help='which loss function to use', default="MSELoss",
+                        type=str)
+    parser.add_argument('--save_dir', dest='save_dir',
+                        help='directory to save models', default="models",
+                        type=str)
+    parser.add_argument('--nw', dest='num_workers',
+                        help='number of worker to load data',
+                        default=6, type=int)
+    parser.add_argument('--bs', dest='batch_size',
+                        help='batch_size',
+                        default=16, type=int)
+    parser.add_argument('--cuda', dest='use_cuda',
+                        help='whether use CUDA',
+                        default=False, type=bool)
+    parser.add_argument('--gpu', dest='gpu_id',
+                        default=0, type=int,
+    				    help='GPU id to use.')
 
-        self.x_scaler = MinMaxScaler(copy=True, feature_range=(-1, 1))
-        self.x_scaler.fit(x_data)
-        self.y_scaler = MinMaxScaler(copy=True, feature_range=(-1, 1))
-        self.y_scaler.fit(y_data)
+    # Configure optimization
+    parser.add_argument('--o', dest='optimizer',
+                        help='training optimizer',
+                        default="sgd", type=str)
+    parser.add_argument('--lr', dest='lr',
+                        help='starting learning rate',
+                        default=0.001, type=float)
+    parser.add_argument('--lr_decay_step', dest='lr_decay_step',
+                        help='step to do learning rate decay, unit is epoch',
+                        default=5, type=int)
+    parser.add_argument('--lr_decay_gamma', dest='lr_decay_gamma',
+                        help='learning rate decay ratio',
+                        default=0.1, type=float)
+    args = parser.parse_args()
 
-        self.len = x_data.shape[0]
+    return args
 
-    def __getitem__(self, index):
-        """ Get a sample from the dataset """
-        with open(os.path.join(self.root, self.x_file)) as fpx:
-            x_lines = fpx.readlines()
-        with open(os.path.join(self.root, self.y_file)) as fpy:
-            y_lines = fpy.readlines()
-
-        inputs = np.array([float(i) for i in x_lines[index].split(',')]).reshape(1,-1)
-        inputs = self.x_scaler.transform(inputs)
-        targets = np.array([float(i) for i in y_lines[index].split(',')]).reshape(1,-1)
-        targets = self.y_scaler.transform(targets)
-
-        if self.transform is not None:
-            inputs = self.transform(inputs)
-            targets = self.transform(targets)
-
-        return inputs, targets
-
-    def __len__(self):
-        """ Total number of samples in the dataset """
-        return self.len
-
-# Creating a Neural Network
-class Net_1(nn.Module):
-    def __init__(self):
-        super(Net_1, self).__init__()
-        self.fc1 = nn.Sequential(
-            nn.Linear(22, 22),
-            nn.Hardtanh(),
-            # nn.Dropout(0.5)
-            nn.Linear(22, 5),
-            nn.Hardtanh(),
-            # nn.Dropout(0.5)
-            nn.Linear(5, 5),
-            nn.Hardtanh(),
-            # nn.Dropout(0.5)
-            nn.Linear(5,5)
-        )
-
-    def forward(self, x):
-        x = self.fc1(x)
-        # print('Tensor size and type after fc1:', x.shape, x.dtype)
-        return x
-
-# Train the network.
-def train_save(model, trainset_loader, device, epoch, save_interval, log_interval=100):
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-    criterion = nn.MSELoss()
-    model.train()  # Important: set training mode
-
-    iteration = 0
-    for ep in range(epoch):
-        for batch_idx, (data, target) in enumerate(trainset_loader):
-            data, target = data.float().to(device), target.float().to(device)
-            # print(data.shape)
-            # print(target.shape)
-            optimizer.zero_grad()
-            output = model(data)
-            loss = criterion(output, target)
-            loss.backward()
-            optimizer.step()
-
-            if iteration % log_interval == 0:
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    ep, batch_idx * len(data), len(trainset_loader.dataset),
-                    100. * batch_idx / len(trainset_loader), loss.item()))
-            if iteration % save_interval == 0 and iteration > 0:
-                save_path = os.path.join('models', 'fourbar-%i.pth' % iteration)
-                save_checkpoint(save_path, model, optimizer)
-            iteration += 1
-
-    # save the final model
-    save_path = os.path.join('models', 'fourbar-%i.pth' % iteration)
-    save_checkpoint(save_path, model, optimizer)
-
-def test(model, testset_loader, device):
-    criterion = nn.MSELoss()
-    model.eval()  # Important: set evaluation mode
-    test_loss = 0
-    with torch.no_grad(): # This will free the GPU memory used for back-prop
-        for data, target in testset_loader:
-            print('Testset data tensor in each batch:', data.shape, data.dtype)
-            data, target = data.to(device), target.to(device)
-            output = model(data)
-            test_loss += criterion(output, target).item() # sum up batch loss
-
-    test_loss /= len(testset_loader.dataset)
-    print('\nTest set: Average loss: {:.4f}\n'.format(test_loss))
-
-# Save the model
 def save_checkpoint(checkpoint_path, model, optimizer):
     state = {'state_dict': model.state_dict(),
              'optimizer' : optimizer.state_dict()}
     torch.save(state, checkpoint_path)
     print('model saved to %s' % checkpoint_path)
 
-def load_checkpoint(checkpoint_path, model, optimizer):
-    state = torch.load(checkpoint_path)
-    model.load_state_dict(state['state_dict'])
-    optimizer.load_state_dict(state['optimizer'])
-    print('model loaded from %s' % checkpoint_path)
+def train(model, trainset_loader, valset_loader, args):
+    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
+    if args.loss == 'MSELoss':
+        criterion = nn.MSELoss()
+    # train
+    model.train()
 
-if __name__ == "__main__":
-    # Load the images into custom-created Dataset.
-    root = os.path.join('data','60positions')
-    y_file = '_param.csv'
-    print('root:', root, ', y file:', y_file)
-    trainset = Fourbar(root=root, x_file='x_train.csv', y_file='y_train'+y_file, transform=transforms.ToTensor())
-    testset = Fourbar(root=root, x_file='x_test.csv', y_file='y_test'+y_file, transform=transforms.ToTensor())
+    f = open('result.txt', 'w')
+    for epoch in range(args.start_epoch, args.max_epochs + 1):
+        model.train()
 
-    print('# Fourier descriptors in trainset:', len(trainset)) # Should print 60000
-    print('# Fourier descriptors in testset:', len(testset)) # Should print 10000
+        # training
+        print ('Epoch = {}'.format(epoch))
+        train_losses = AverageMeter()
+        train_pbar = tqdm(total=len(trainset_loader), ncols=100, leave=True)
+        for batch_idx, (inputs, targets) in enumerate(trainset_loader):
+            if args.use_cuda:
+                inputs, targets = inputs.cuda(args.gpu_id), targets.cuda(args.gpu_id)
 
-    # Use the torch dataloader to iterate through the dataset
-    trainset_loader = DataLoader(trainset, batch_size=64, shuffle=True, num_workers=1)
-    testset_loader = DataLoader(testset, batch_size=1000, shuffle=False, num_workers=1)
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+            train_losses.update(loss.data.item(), inputs.size(0))
 
-    # get some random training images
-    dataiter = iter(trainset_loader)
-    inputs, targets = dataiter.next()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            train_pbar.update()
+            if batch_idx % 2 == 0:
+                train_pbar.set_postfix({'loss':'{:.4f}'.format(train_losses.avg)})
+        train_pbar.set_postfix({'loss':'{:.4f}'.format(train_losses.avg)})
+        train_pbar.close()
 
-    print('Trainset inputs tensor in each batch:', inputs.shape, inputs.dtype)
-    print('Trainset targets tensor in each batch:', targets.shape, targets.dtype)
+        # evaluate
+        model.eval()
+        val_losses = AverageMeter()
+        val_pbar = tqdm(total=len(valset_loader), ncols=100, leave=True)
+        for batch_idx, (inputs, targets) in enumerate(valset_loader):
+            if args.use_cuda:
+                inputs, targets = inputs.cuda(args.gpu_id), targets.cuda(args.gpu_id)
 
-    # Use GPU if available, otherwise stick with cpu
-    use_cuda = torch.cuda.is_available()
-    torch.manual_seed(123)
-    device = torch.device("cuda" if use_cuda else "cpu")
-    print('Device used:', device)
+            with torch.no_grad():
+                outputs = model(inputs)
+                loss = criterion(outputs, targets)
+                val_losses.update(loss.data.item(), inputs.size(0))
 
-    # Training
-    model = Net_1().to(device) # Remember to move the model to "device"
-    print(model)
-    train_save(model, trainset_loader, device, epoch=10, save_interval=500, log_interval=100)
+                val_pbar.update()
+                if batch_idx % 2 == 0:
+                    val_pbar.set_postfix({'loss':'{:.4f}'.format(val_losses.avg)})
+        val_pbar.set_postfix({'loss':'{:.4f}'.format(val_losses.avg)})
+        val_pbar.close()
 
-    # create a new model to test final checkpoint
-    # model = Net().to(device)
-    # optimizer = optim.Adam(model.parameters(), lr=0.001)
+        if epoch % 5 == 0:
+            save_checkpoint(join(args.save_dir, 'model_{}.pth'.format(epoch)), model, optimizer)
 
-    # load from the final checkpoint
-    # save_path = os.path.join('models', 'fourbar-.pth')
-    # load_checkpoint(save_path, model, optimizer)
+        f.write('Epoch={:3d}, train_loss={:.4f}, val_loss={:.4f}\n'.format(epoch, train_losses.avg, val_losses.avg))
+        f.flush()
 
-    # should give you the final model accuracy
-    # test(model)
+if __name__ == '__main__':
+    # parse args
+    args = parse_args()
+
+    args.use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda:{}".format(args.gpu_id) if args.use_cuda else "cpu")
+    print(device)
+
+    root = os.path.join(args.data_dir, args.pos_num)
+    print('root:', root, ', y file:', args.tar)
+    trainset = FDs(root=root, x_file='x_train.csv', y_file='y_train'+args.tar, transform=True)
+    valset = FDs(root=root, x_file='x_test.csv', y_file='y_test'+args.tar, transform=True)
+    trainset_loader = DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+    valset_loader = DataLoader(valset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+
+    # create model
+    model = Net_1()
+    if args.use_cuda:
+        model = model.cuda(args.gpu_id)
+
+    # start training
+    train(model, trainset_loader, valset_loader, args)
