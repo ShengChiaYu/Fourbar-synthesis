@@ -17,6 +17,7 @@ from tqdm import tqdm
 from dataset import FDs
 from models import Net_1
 from utils import AverageMeter
+from loss import PosLoss
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a Fourbar network')
@@ -34,15 +35,15 @@ def parse_args():
     parser.add_argument('--net', dest='net',
                         help='Net_1',
                         default='Net_1', type=str)
+    parser.add_argument('--pretrained', dest='pretrained',
+                        help='True,False',
+                        default=False, type=bool)
     parser.add_argument('--start_epoch', dest='start_epoch',
                         help='starting epoch',
                         default=1, type=int)
     parser.add_argument('--epochs', dest='max_epochs',
                         help='number of epochs to train',
                         default=100, type=int)
-    parser.add_argument('--loss', dest='loss',
-                        help='which loss function to use', default="MSELoss",
-                        type=str)
     parser.add_argument('--save_dir', dest='save_dir',
                         help='directory to save models', default="models",
                         type=str)
@@ -82,27 +83,58 @@ def save_checkpoint(checkpoint_path, model, optimizer):
     torch.save(state, checkpoint_path)
     print('model saved to %s' % checkpoint_path)
 
+def load_checkpoint(checkpoint_path, model, optimizer):
+    state = torch.load(checkpoint_path)
+    model.load_state_dict(state['state_dict'])
+    optimizer.load_state_dict(state['optimizer'])
+    print('model loaded from %s' % checkpoint_path)
+
 def train(model, trainset_loader, valset_loader, args):
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
-    if args.loss == 'MSELoss':
+    if args.tar == '_pos.csv':
+        if args.pos_num == '60positions':
+            criterion = PosLoss(60)
+        if args.pos_num == '360positions':
+            criterion = PosLoss(360)
+    else:
         criterion = nn.MSELoss()
+
     # train
     model.train()
 
     f = open('result.txt', 'w')
     for epoch in range(args.start_epoch, args.max_epochs + 1):
+        # training
         model.train()
 
-        # training
         print ('Epoch = {}'.format(epoch))
-        train_losses = AverageMeter()
+        aug = 1 # augmentation for loss
+        train_losses = AverageMeter(aug)
+
+        if args.tar == '_pos.csv':
+            invalid_losses, up_losses, low_losses, bo_losses, no_losses = AverageMeter(aug), AverageMeter(aug), \
+            AverageMeter(aug), AverageMeter(aug), AverageMeter(aug)
+
         train_pbar = tqdm(total=len(trainset_loader), ncols=100, leave=True)
         for batch_idx, (inputs, targets) in enumerate(trainset_loader):
             if args.use_cuda:
                 inputs, targets = inputs.cuda(args.gpu_id), targets.cuda(args.gpu_id)
 
             outputs = model(inputs)
-            loss = criterion(outputs, targets)
+
+            if args.tar == '_pos.csv':
+                invalid_loss, up_loss, low_loss, bo_loss, no_loss = criterion(outputs, targets)
+
+                invalid_losses.update(invalid_loss.data.item(), inputs.size(0))
+                up_losses.update(up_loss.data.item(), inputs.size(0))
+                low_losses.update(low_loss.data.item(), inputs.size(0))
+                bo_losses.update(bo_loss.data.item(), inputs.size(0))
+                no_losses.update(no_loss.data.item(), inputs.size(0))
+
+                loss = invalid_loss + up_loss + low_loss + bo_loss + no_loss
+            else:
+                loss = criterion(outputs, targets)
+
             train_losses.update(loss.data.item(), inputs.size(0))
 
             optimizer.zero_grad()
@@ -110,13 +142,28 @@ def train(model, trainset_loader, valset_loader, args):
             optimizer.step()
             train_pbar.update()
             if batch_idx % 2 == 0:
-                train_pbar.set_postfix({'loss':'{:.4f}'.format(train_losses.avg)})
-        train_pbar.set_postfix({'loss':'{:.4f}'.format(train_losses.avg)})
+                if args.tar == '_pos.csv':
+                    train_pbar.set_postfix({'loss':'{:.4f}'.format(train_losses.avg), 'inv':'{:.4f}'.format(invalid_losses.avg),
+                                            'up':'{:.4f}'.format(up_losses.avg), 'low':'{:.4f}'.format(low_losses.avg),
+                                            'bo':'{:.4f}'.format(bo_losses.avg), 'no_':'{:.4f}'.format(no_losses.avg)})
+                else:
+                    train_pbar.set_postfix({'loss':'{:.4f}'.format(train_losses.avg)})
+        if args.tar == '_pos.csv':
+            train_pbar.set_postfix({'loss':'{:.4f}'.format(train_losses.avg), 'inv':'{:.4f}'.format(invalid_losses.avg),
+                                    'up':'{:.4f}'.format(up_losses.avg), 'low':'{:.4f}'.format(low_losses.avg),
+                                    'bo':'{:.4f}'.format(bo_losses.avg), 'no_':'{:.4f}'.format(no_losses.avg)})
+        else:
+            train_pbar.set_postfix({'loss':'{:.4f}'.format(train_losses.avg)})
+
         train_pbar.close()
 
         # evaluate
         model.eval()
-        val_losses = AverageMeter()
+        val_losses = AverageMeter(aug)
+        if args.tar == '_pos.csv':
+            invalid_losses, up_losses, low_losses, bo_losses, no_losses = AverageMeter(aug), AverageMeter(aug), \
+            AverageMeter(aug), AverageMeter(aug), AverageMeter(aug)
+
         val_pbar = tqdm(total=len(valset_loader), ncols=100, leave=True)
         for batch_idx, (inputs, targets) in enumerate(valset_loader):
             if args.use_cuda:
@@ -124,13 +171,35 @@ def train(model, trainset_loader, valset_loader, args):
 
             with torch.no_grad():
                 outputs = model(inputs)
-                loss = criterion(outputs, targets)
+                if args.tar == '_pos.csv':
+                    invalid_loss, up_loss, low_loss, bo_loss, no_loss = criterion(outputs, targets)
+
+                    invalid_losses.update(invalid_loss.data.item(), inputs.size(0))
+                    up_losses.update(up_loss.data.item(), inputs.size(0))
+                    low_losses.update(low_loss.data.item(), inputs.size(0))
+                    bo_losses.update(bo_loss.data.item(), inputs.size(0))
+                    no_losses.update(no_loss.data.item(), inputs.size(0))
+
+                    loss = invalid_loss + up_loss + low_loss + bo_loss + no_loss
+                else:
+                    loss = criterion(outputs, targets)
+
                 val_losses.update(loss.data.item(), inputs.size(0))
 
                 val_pbar.update()
                 if batch_idx % 2 == 0:
-                    val_pbar.set_postfix({'loss':'{:.4f}'.format(val_losses.avg)})
-        val_pbar.set_postfix({'loss':'{:.4f}'.format(val_losses.avg)})
+                    if args.tar == '_pos.csv':
+                        val_pbar.set_postfix({'loss':'{:.4f}'.format(val_losses.avg), 'inv':'{:.4f}'.format(invalid_losses.avg),
+                                                'up':'{:.4f}'.format(up_losses.avg), 'low':'{:.4f}'.format(low_losses.avg),
+                                                'bo':'{:.4f}'.format(bo_losses.avg), 'no_':'{:.4f}'.format(no_losses.avg)})
+                    else:
+                        val_pbar.set_postfix({'loss':'{:.4f}'.format(val_losses.avg)})
+        if args.tar == '_pos.csv':
+            val_pbar.set_postfix({'loss':'{:.4f}'.format(val_losses.avg), 'inv':'{:.4f}'.format(invalid_losses.avg),
+                                    'up':'{:.4f}'.format(up_losses.avg), 'low':'{:.4f}'.format(low_losses.avg),
+                                    'bo':'{:.4f}'.format(bo_losses.avg), 'no_':'{:.4f}'.format(no_losses.avg)})
+        else:
+            val_pbar.set_postfix({'loss':'{:.4f}'.format(val_losses.avg)})
         val_pbar.close()
 
         if epoch % 5 == 0:
@@ -155,9 +224,11 @@ if __name__ == '__main__':
     valset_loader = DataLoader(valset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
     # create model
-    model = Net_1()
-    if args.use_cuda:
-        model = model.cuda(args.gpu_id)
+    model = Net_1().cuda(args.gpu_id)
+    if args.pretrained:
+        checkpoint_path = os.path.join(os.getcwd(), 'models_pretrained', 'model_100.pth')
+        optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        load_checkpoint(checkpoint_path, model, optimizer)
 
     # start training
     train(model, trainset_loader, valset_loader, args)

@@ -38,15 +38,15 @@ class FDs(Dataset):
         self.x_data = torch.Tensor(self.x_data)
         self.y_data = torch.Tensor(self.y_data)
 
-        self.x_scaler = (torch.max(self.x_data,0)[0], torch.min(self.x_data,0)[0])
-        self.y_scaler = (torch.max(self.y_data,0)[0], torch.min(self.y_data,0)[0])
-
-        self.x_std = (self.x_data - self.x_scaler[1]) / (self.x_scaler[0] - self.x_scaler[1])
-        self.y_std = (self.y_data - self.y_scaler[1]) / (self.y_scaler[0] - self.y_scaler[1])
-
         if self.transform:
+            self.x_scaler = (torch.max(self.x_data,0)[0], torch.min(self.x_data,0)[0])
+            # self.y_scaler = (torch.max(self.y_data,0)[0], torch.min(self.y_data,0)[0])
+
+            self.x_std = (self.x_data - self.x_scaler[1]) / (self.x_scaler[0] - self.x_scaler[1])
+            # self.y_std = (self.y_data - self.y_scaler[1]) / (self.y_scaler[0] - self.y_scaler[1])
+
             self.x_data = self.x_std * (self.max - self.min) + self.min
-            self.y_data = self.y_std * (self.max - self.min) + self.min
+            # self.y_data = self.y_std * (self.max - self.min) + self.min
 
         self.len = self.x_data.size(0)
 
