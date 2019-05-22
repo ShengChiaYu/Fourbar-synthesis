@@ -13,71 +13,8 @@ from tqdm import tqdm
 
 from dataset import FDs
 from models import Net_1
-from utils import AverageMeter
+from utils import AverageMeter, parse_args
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='Train a Fourbar network')
-    # Load data
-    parser.add_argument('--data_dir', dest='data_dir',
-                        help='directory to dataset',
-                        default="data", type=str)
-    parser.add_argument('--pos_num', dest='pos_num',
-                        help='60, 360',
-                        default='60positions', type=str)
-    parser.add_argument('--target', dest='tar',
-                        help='param, pos',
-                        default='_param.csv', type=str)
-    # Training setup
-    parser.add_argument('--net', dest='net',
-                        help='Net_1',
-                        default='Net_1', type=str)
-    parser.add_argument('--pretrained', dest='pretrained',
-                        help='True,False',
-                        default=False, type=bool)
-    parser.add_argument('--start_epoch', dest='start_epoch',
-                        help='starting epoch',
-                        default=1, type=int)
-    parser.add_argument('--epochs', dest='max_epochs',
-                        help='number of epochs to train',
-                        default=100, type=int)
-    parser.add_argument('--save_dir', dest='save_dir',
-                        help='directory to save models', default="models",
-                        type=str)
-    parser.add_argument('--nw', dest='num_workers',
-                        help='number of worker to load data',
-                        default=6, type=int)
-    parser.add_argument('--bs', dest='batch_size',
-                        help='batch_size',
-                        default=16, type=int)
-    parser.add_argument('--cuda', dest='use_cuda',
-                        help='whether use CUDA',
-                        default=False, type=bool)
-    parser.add_argument('--gpu', dest='gpu_id',
-                        default=0, type=int,
-    				    help='GPU id to use.')
-
-    # Configure optimization
-    parser.add_argument('--o', dest='optimizer',
-                        help='training optimizer',
-                        default="sgd", type=str)
-    parser.add_argument('--lr', dest='lr',
-                        help='starting learning rate',
-                        default=0.001, type=float)
-    parser.add_argument('--lr_decay_step', dest='lr_decay_step',
-                        help='step to do learning rate decay, unit is epoch',
-                        default=5, type=int)
-    parser.add_argument('--lr_decay_gamma', dest='lr_decay_gamma',
-                        help='learning rate decay ratio',
-                        default=0.1, type=float)
-
-    # Predict setup
-    parser.add_argument('--predict_fn', dest='predict_fn',
-                        help='predicted file name',
-                        default='predict.csv', type=str)
-
-    args = parser.parse_args()
-
-    return args
 
 def load_checkpoint(checkpoint_path, model, optimizer):
     state = torch.load(checkpoint_path)
@@ -103,7 +40,7 @@ def predict(model, valset_loader, args):
         AverageMeter(aug), AverageMeter(aug), AverageMeter(aug)
 
     val_pbar = tqdm(total=len(valset_loader), ncols=100, leave=True)
-    filepath = os.path.join(os.getcwd(), 'result', args.predict_fn)
+    filepath = os.path.join(os.getcwd(), 'result', '{}.csv'.format(args.model_name))
     file = open(filepath, 'w')
     for batch_idx, (inputs, targets) in enumerate(valset_loader):
         if args.use_cuda:
@@ -162,10 +99,9 @@ if __name__ == '__main__':
 
     # create model
     model = Net_1().cuda(args.gpu_id)
-    if args.pretrained:
-        checkpoint_path = os.path.join(os.getcwd(), 'models', 'model_5.pth')
-        optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-        load_checkpoint(checkpoint_path, model, optimizer)
+    checkpoint_path = os.path.join(os.getcwd(), args.model_dir, '{}.pth'.format(args.model_name))
+    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    load_checkpoint(checkpoint_path, model, optimizer)
 
     # start training
     predict(model, valset_loader, args)

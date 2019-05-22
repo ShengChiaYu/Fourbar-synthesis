@@ -158,7 +158,7 @@ class PosLoss(nn.Module):
         # postions
         valid_mask_pos = valid_mask.unsqueeze(-1).expand_as(target_tensor)
         invalid_mask_pos = invalid_mask.unsqueeze(-1).expand_as(target_tensor)
-        valid_target = target_tensor[valid_mask_pos].view(-1,2*self.pos_num) # [,120/720]
+        valid_target = target_tensor[valid_mask_pos].view(-1,2*self.pos_num) # [, 120/720]
         invalid_target = target_tensor[invalid_mask_pos].view(-1,2*self.pos_num) # [, 120/720]
 
         # loss of invalid linkages
@@ -190,7 +190,7 @@ class PosLoss(nn.Module):
             no_pos.zero_()
             no_loss = F.mse_loss(no_pos, valid_target, reduction='sum')
         invalid_loss.requires_grad = True
-        
+
         # valid_loss = up_loss + low_loss + bo_loss + no_loss
         return invalid_loss/N, up_loss/N, low_loss/N, bo_loss/N, no_loss/N # (invalid_loss + valid_loss) / N
 
