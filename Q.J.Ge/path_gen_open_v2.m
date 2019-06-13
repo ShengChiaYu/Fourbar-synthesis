@@ -24,6 +24,7 @@ elseif (r(1)+r(2))>=(r(3)+r(4)) && abs(r(1)-r(2))<=abs(r(3)-r(4))
     alfaM=acos((r(1)^2+r(2)^2-(r(3)+r(4))^2)/(2*r(1)*r(2)));
     alfam=acos((r(1)^2+r(2)^2-(r(3)-r(4))^2)/(2*r(1)*r(2)));
     t=linspace(alfam, alfaM, N);
+%     t=linspace(2*pi-alfaM, 2*pi-alfam, N);
     
 elseif (r(1)+r(2))<=(r(3)+r(4)) && abs(r(1)-r(2))<=abs(r(3)-r(4))
     alfaM=2*pi-acos((r(1)^2+r(2)^2-(r(3)-r(4))^2)/(2*r(1)*r(2)));
