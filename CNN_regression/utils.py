@@ -13,7 +13,7 @@ class AverageMeter(object):
 		self.count = 0
 
 	def update(self, val, n=1):
-		val *= self.loss_aug
+		# val *= self.loss_aug
 		self.val = val
 		self.sum += val * n
 		self.count += n
@@ -33,13 +33,13 @@ def parse_args():
                         default='_param.csv', type=str)
     parser.add_argument('--img_size', dest='img_size',
                         help='image size',
-                        default=200, type=int)
+                        default=224, type=int)
     parser.add_argument('--class_num', dest='class_num',
                         help='class number',
                         default=4, type=int)
     parser.add_argument('--select_dir', dest='select_dir',
                         help='select_dir',
-                        default=None, type=None)
+                        default='GCRR', type=None)
 
     # Training setup
     parser.add_argument('--net', dest='net',
@@ -57,21 +57,28 @@ def parse_args():
     parser.add_argument('--save_dir', dest='save_dir',
                         help='directory to save models',
                         default='models', type=str)
+
     parser.add_argument('--nw', dest='num_workers',
                         help='number of worker to load data',
                         default=6, type=int)
     parser.add_argument('--bs', dest='batch_size',
                         help='batch_size',
                         default=32, type=int)
+
     parser.add_argument('--cuda', dest='use_cuda',
                         help='whether use CUDA',
                         default=False, type=bool)
     parser.add_argument('--gpu', dest='gpu_id',
                         help='GPU id to use.',
                         default=0, type=int)
+
     parser.add_argument('--threshold', dest='threshold',
                         help='threshold of correctness',
                         default=0.01, type=float)
+    parser.add_argument('--patience', dest='patience',
+                        help='maximum count of early stopping',
+                        default=5, type=int)
+
 
     # Configure optimization
     parser.add_argument('--o', dest='optimizer',
@@ -79,7 +86,7 @@ def parse_args():
                         default="sgd", type=str)
     parser.add_argument('--lr', dest='lr',
                         help='starting learning rate',
-                        default=0.001, type=float)
+                        default=1e-3, type=float)
     parser.add_argument('--lr_decay_step', dest='lr_decay_step',
                         help='step to do learning rate decay, unit is epoch',
                         default=5, type=int)

@@ -211,7 +211,9 @@ class ResNet(nn.Module):
                                        dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         if args.select_dir is not None:
-            self.fc = nn.Linear(512 * block.expansion, 5)
+            self.fc1 = nn.Linear(512 * block.expansion, 512)
+            self.fc2 = nn.Linear(512, 128)
+            self.fc3 = nn.Linear(128, 5)
         else:
             self.fc = nn.Linear(512 * block.expansion, args.class_num)
 
@@ -269,7 +271,9 @@ class ResNet(nn.Module):
 
         x = self.avgpool(x)
         x = x.reshape(x.size(0), -1)
-        x = self.fc(x)
+        x = self.fc1(x)
+        x = self.fc2(x)
+        x = self.fc3(x)
 
         return x
 
@@ -308,7 +312,8 @@ def test():
     args = parse_args()
 
     # model = Net_1().cuda()
-    model = LeNet(args).cuda()
+    # model = LeNet(args).cuda()
+    model = resnet50(args).cuda()
 
     input = torch.rand(4,3,200,200).cuda()
     output = model(input)

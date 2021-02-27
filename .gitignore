@@ -3,6 +3,9 @@
 *.png
 *.asv
 *.h5
+*.jpg
 *.pth
-__pycache__/
+*.txt
+*.xlsx
 *.gitignore
+__pycache__/

@@ -39,7 +39,7 @@ def parse_args():
                         default=4, type=int)
     parser.add_argument('--select_dir', dest='select_dir',
                         help='select_dir',
-                        default=None, type=None)
+                        default='GCRR', type=None)
 
     # Training setup
     parser.add_argument('--net', dest='net',
@@ -62,7 +62,7 @@ def parse_args():
                         default=6, type=int)
     parser.add_argument('--bs', dest='batch_size',
                         help='batch_size',
-                        default=32, type=int)
+                        default=16, type=int)
     parser.add_argument('--cuda', dest='use_cuda',
                         help='whether use CUDA',
                         default=False, type=bool)
@@ -79,7 +79,7 @@ def parse_args():
                         default="sgd", type=str)
     parser.add_argument('--lr', dest='lr',
                         help='starting learning rate',
-                        default=0.001, type=float)
+                        default=1e-3, type=float)
     parser.add_argument('--lr_decay_step', dest='lr_decay_step',
                         help='step to do learning rate decay, unit is epoch',
                         default=5, type=int)
