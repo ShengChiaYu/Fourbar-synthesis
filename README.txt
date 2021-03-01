@@ -1,1 +1,0 @@
-Four-bar linkage synthesis
